@@ -3,6 +3,10 @@ import { FiLogIn, FiMail, FiLock } from 'react-icons/fi';
 import { FormHandles } from '@unform/core';
 import { Form } from '@unform/web';
 import * as Yup from 'yup';
+
+import { useAuth } from '../../hooks/auth';
+import { useToast } from '../../hooks/toast';
+
 import getValidationErros from '../../utils/getValidationErros';
 
 import logoImg from '../../assets/logo.svg';
@@ -12,10 +16,18 @@ import Button from '../../components/Button';
 
 import { Container, Content, Background } from './styles';
 
+interface SignInFormData {
+  email: string;
+  password: string;
+}
+
 const SignIn: React.FC = () => {
   const formRef = useRef<FormHandles>(null);
 
-  // eslint-disable-next-line @typescript-eslint/ban-types
+  const { user, signIn } = useAuth();
+
+  const { addToast } = useToast();
+
   const validateForm = useCallback(async () => {
     try {
       formRef.current?.setErrors({});
@@ -31,16 +43,33 @@ const SignIn: React.FC = () => {
         abortEarly: false,
       });
     } catch (error) {
-      const errors = getValidationErros(error);
+      if (error instanceof Yup.ValidationError) {
+        const errors = getValidationErros(error);
 
-      formRef.current?.setErrors(errors);
+        formRef.current?.setErrors(errors);
+      }
     }
   }, []);
 
-  // eslint-disable-next-line @typescript-eslint/ban-types
-  const handleSubmit = useCallback(async () => {
-    await validateForm();
-  }, [validateForm]);
+  const handleSubmit = useCallback(
+    async (data: SignInFormData) => {
+      await validateForm();
+
+      try {
+        await signIn({
+          email: data.email,
+          password: data.password,
+        });
+      } catch (error) {
+        addToast({
+          type: 'error',
+          title: 'Erro na Autenticação',
+          description: 'Ocorreu um erro ao fazer login, cheque as credenciais.',
+        });
+      }
+    },
+    [validateForm, signIn, addToast],
+  );
 
   return (
     <Container>
